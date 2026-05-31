@@ -99,6 +99,12 @@ $proofs = [
           Scenario name
           <input id="scenarioName" type="text" value="Toy Signal demo">
         </label>
+        <label>
+          Saved scenarios
+          <select id="savedScenarioSelect">
+            <option value="">No saved scenarios loaded</option>
+          </select>
+        </label>
         <div class="button-row">
           <button type="submit">Save via PHP/MySQL</button>
           <button type="button" id="loadScenariosBtn">Load saved</button>

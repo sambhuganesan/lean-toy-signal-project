@@ -71,7 +71,8 @@ lake exe lean-secure-messaging-toy
 
 The `web/` directory contains an interactive PHP/HTML/CSS/JS demo of the same
 toy model. It lets users add participants, create messages, choose the inbox a
-message is delivered to, and see which Lean theorem explains the result.
+message is delivered to, save/load scenarios, and see which Lean theorem
+explains the result.
 
 Run it with PHP:
 
@@ -85,8 +86,18 @@ Then open:
 http://localhost:8080
 ```
 
-The visual demo works without a database. It also includes optional MySQL
-persistence for saving scenarios.
+The visual demo works without a database. If MySQL is not configured, saved
+scenarios are written as JSON files under:
+
+```text
+web/storage/scenarios/
+```
+
+After saving, the app prints the exact JSON file path. The saved-scenarios
+dropdown lets you choose which saved scenario to load back into the board.
+
+The app also includes optional MySQL persistence for saving and loading
+scenarios.
 
 To enable MySQL persistence:
 
@@ -102,6 +113,7 @@ The web app demonstrates:
 - PHP-rendered theorem metadata in `web/index.php`
 - responsive HTML/CSS layout in `web/assets/styles.css`
 - interactive simulation logic in `web/assets/app.js`
+- JSON-file fallback persistence in `web/storage/scenarios/`
 - PDO/MySQL API endpoints in `web/api/save_scenario.php` and
   `web/api/list_scenarios.php`
 - database schema in `web/database/schema.sql`
@@ -130,7 +142,7 @@ messages   -> message cards
 deliverTo  -> "Deliver" action in the form
 canRead    -> readable / blocked badge on each card
 InboxSafe  -> global safety indicator at the top
-theorems   -> proof cards in the right panel
+theorems   -> proof trace and theorem cards in the right panel
 ```
 
 ### PHP
@@ -160,7 +172,7 @@ Then PHP serializes that data into the page:
 ```
 
 The JavaScript reads that theorem metadata and highlights the proof cards that
-apply to the current scenario.
+apply to the latest message in the current scenario.
 
 ### JavaScript Simulation
 
@@ -219,24 +231,41 @@ Deliver to Eve
 The app then shows that the message is stored in Eve's inbox but still
 encrypted for Bob.
 
-### Proof Highlighting
+### Proof Trace
 
-The app highlights theorem cards based on the current state.
+The proof trace explains the latest delivered message as concrete facts.
 
-If a message is delivered to the recipient's inbox, the UI highlights:
+For correct delivery, it shows:
 
-```lean
-deliverCorrect_preserves_safe
+```text
+Placement proved
+Recipient can read
+Inbox owner can read
+InboxSafe preserved
 ```
 
-If a message is delivered to a different inbox, the UI highlights:
+For wrong-inbox delivery, it shows:
 
-```lean
-wrong_inbox_owner_cannot_read_message
+```text
+Placement proved
+Recipient can read
+Inbox owner cannot read
+InboxSafe violated
 ```
 
-The point of the interface is to connect a concrete interaction to the Lean
-proof that explains it.
+Green proof lines mean the fact is verified by the model. Red proof lines mean
+the model has verified a blocked read or a violated `InboxSafe` invariant.
+
+This distinction matters:
+
+```text
+A wrong inbox owner being unable to read is a good security fact.
+The global InboxSafe invariant is still violated because that inbox contains a
+message encrypted for someone else.
+```
+
+The theorem cards below the trace are highlighted based on which Lean theorem
+explains the latest message.
 
 ### Responsive UI
 
@@ -251,9 +280,31 @@ right  -> proof trace
 `web/assets/styles.css` uses CSS grid and media queries so the layout collapses
 on smaller screens.
 
-### MySQL Persistence
+### Saving And Loading Scenarios
 
-The app includes optional MySQL persistence for saving demo scenarios.
+The app supports two persistence modes.
+
+If `web/api/config.php` is not configured, saves go to local JSON files:
+
+```text
+web/storage/scenarios/
+```
+
+Each saved file contains:
+
+```text
+scenario name
+users
+messages
+created timestamp
+storage type
+```
+
+The dropdown under "Saved scenarios" is populated from
+`web/api/list_scenarios.php`. Choosing an entry and clicking "Load saved"
+restores that scenario into the board.
+
+If MySQL is configured, the same save/load controls use the `scenarios` table.
 
 The schema stores:
 
@@ -630,6 +681,11 @@ The executable in `Main.lean` demonstrates:
 - Repeated correct delivery still preserves `InboxSafe`.
 - A message can be placed into Eve's inbox while still being encrypted for Bob.
 - Lean proves that Eve cannot read that Bob-encrypted message.
+- The web demo can save scenarios as JSON files or, if configured, in MySQL.
+- The web demo can load a chosen saved scenario from the saved-scenarios
+  dropdown.
+- The proof trace distinguishes verified readability facts from an `InboxSafe`
+  violation caused by wrong-inbox delivery.
 
 Some checks happen at runtime using printed booleans like:
 
@@ -660,3 +716,5 @@ This project demonstrates basic Lean fluency with:
   `exact`, and `rfl`
 - maintaining a safety invariant across state updates
 - separating executable testing from theorem proving
+- building a responsive PHP/HTML/CSS/JS visualization of a formal model
+- saving and loading interactive scenarios with JSON fallback or MySQL/PDO

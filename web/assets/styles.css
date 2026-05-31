@@ -368,9 +368,18 @@ label {
 
 .proof-line {
   border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
   border-radius: 8px;
   padding: 0.65rem;
   background: #fbfcfe;
+}
+
+.proof-line.is-verified {
+  border-left-color: var(--safe);
+}
+
+.proof-line.is-warning {
+  border-left-color: var(--blocked);
 }
 
 .proof-line strong {
