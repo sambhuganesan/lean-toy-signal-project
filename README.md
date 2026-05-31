@@ -718,3 +718,8 @@ This project demonstrates basic Lean fluency with:
 - separating executable testing from theorem proving
 - building a responsive PHP/HTML/CSS/JS visualization of a formal model
 - saving and loading interactive scenarios with JSON fallback or MySQL/PDO
+
+## Credits
+
+I used Codex to help me build the front end of the web app and also verify my 
+code in Lean and PHP. 
