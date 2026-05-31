@@ -456,17 +456,3 @@ This project demonstrates basic Lean fluency with:
 - maintaining a safety invariant across state updates
 - separating executable testing from theorem proving
 
-## Limits
-
-This is a toy formal model. It does not prove real cryptographic security,
-network security, authentication, secrecy under an attacker model, or anything
-about actual encryption algorithms.
-
-The useful claim is narrower:
-
-```text
-Under this simplified model, messages are readable only by the user in their
-encryptedFor field, and correct delivery preserves the inbox safety invariant.
-```
-
-That narrow claim is exactly what the Lean proofs check.
