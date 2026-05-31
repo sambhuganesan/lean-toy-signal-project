@@ -1,0 +1,10 @@
+name = "lean-secure-messaging-toy"
+version = "0.1.0"
+defaultTargets = ["lean-secure-messaging-toy"]
+
+[[lean_lib]]
+name = "LeanSecureMessagingToy"
+
+[[lean_exe]]
+name = "lean-secure-messaging-toy"
+root = "Main"
