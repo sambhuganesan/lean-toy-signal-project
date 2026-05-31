@@ -67,6 +67,211 @@ Run the executable demo:
 lake exe lean-secure-messaging-toy
 ```
 
+## Web Demo
+
+The `web/` directory contains an interactive PHP/HTML/CSS/JS demo of the same
+toy model. It lets users add participants, create messages, choose the inbox a
+message is delivered to, and see which Lean theorem explains the result.
+
+Run it with PHP:
+
+```sh
+php -S localhost:8080 -t web
+```
+
+Then open:
+
+```text
+http://localhost:8080
+```
+
+The visual demo works without a database. It also includes optional MySQL
+persistence for saving scenarios.
+
+To enable MySQL persistence:
+
+```sh
+mysql -u root -p < web/database/schema.sql
+cp web/api/config.example.php web/api/config.php
+```
+
+Then edit `web/api/config.php` with your local MySQL credentials.
+
+The web app demonstrates:
+
+- PHP-rendered theorem metadata in `web/index.php`
+- responsive HTML/CSS layout in `web/assets/styles.css`
+- interactive simulation logic in `web/assets/app.js`
+- PDO/MySQL API endpoints in `web/api/save_scenario.php` and
+  `web/api/list_scenarios.php`
+- database schema in `web/database/schema.sql`
+
+## Web App Architecture
+
+The web demo has the same conceptual shape as the Lean model.
+
+The Lean layer defines the formal model:
+
+```text
+User
+Message
+ServerState
+canRead
+sendEncrypted
+deliverTo
+InboxSafe
+```
+
+The web layer visualizes those ideas:
+
+```text
+users      -> dynamic user chips and inbox columns
+messages   -> message cards
+deliverTo  -> "Deliver" action in the form
+canRead    -> readable / blocked badge on each card
+InboxSafe  -> global safety indicator at the top
+theorems   -> proof cards in the right panel
+```
+
+### PHP
+
+`web/index.php` renders the application shell and theorem metadata.
+
+The theorem list is defined on the server side:
+
+```php
+$proofs = [
+    [
+        'id' => 'recipient_can_read',
+        'title' => 'recipient_can_read',
+        'summary' => 'A message produced by sendEncrypted is readable by the intended recipient.',
+        'lean' => 'canRead recipient (sendEncrypted sender recipient body)',
+    ],
+    ...
+];
+```
+
+Then PHP serializes that data into the page:
+
+```php
+<script id="proofData" type="application/json">
+  <?= json_encode($proofs, JSON_UNESCAPED_SLASHES) ?>
+</script>
+```
+
+The JavaScript reads that theorem metadata and highlights the proof cards that
+apply to the current scenario.
+
+### JavaScript Simulation
+
+The browser keeps a small in-memory model:
+
+```js
+const state = {
+  users: ["alice", "bob", "eve"],
+  messages: [],
+  nextMessageId: 1,
+};
+```
+
+The JavaScript version of `sendEncrypted` mirrors the Lean version:
+
+```js
+function sendEncrypted(sender, recipient, body) {
+  return {
+    sender,
+    recipient,
+    body,
+    encryptedFor: recipient,
+    storedIn: null,
+  };
+}
+```
+
+The JavaScript version of `canRead` mirrors the Lean predicate:
+
+```js
+function canRead(user, message) {
+  return user === message.encryptedFor;
+}
+```
+
+The JavaScript version of `deliverTo` creates a message and stores it in the
+selected inbox:
+
+```js
+function deliverTo(inboxOwner, sender, recipient, body) {
+  const message = sendEncrypted(sender, recipient, body);
+  message.storedIn = inboxOwner;
+  state.messages.unshift(message);
+  render();
+}
+```
+
+This is what powers the visual experiment:
+
+```text
+Send from Alice
+Encrypt for Bob
+Deliver to Eve
+```
+
+The app then shows that the message is stored in Eve's inbox but still
+encrypted for Bob.
+
+### Proof Highlighting
+
+The app highlights theorem cards based on the current state.
+
+If a message is delivered to the recipient's inbox, the UI highlights:
+
+```lean
+deliverCorrect_preserves_safe
+```
+
+If a message is delivered to a different inbox, the UI highlights:
+
+```lean
+wrong_inbox_owner_cannot_read_message
+```
+
+The point of the interface is to connect a concrete interaction to the Lean
+proof that explains it.
+
+### Responsive UI
+
+The page is organized as a three-panel layout:
+
+```text
+left   -> controls
+center -> inbox board
+right  -> proof trace
+```
+
+`web/assets/styles.css` uses CSS grid and media queries so the layout collapses
+on smaller screens.
+
+### MySQL Persistence
+
+The app includes optional MySQL persistence for saving demo scenarios.
+
+The schema stores:
+
+```text
+scenario name
+users JSON
+messages JSON
+created timestamp
+```
+
+The PHP endpoints use PDO and prepared statements:
+
+- `web/api/save_scenario.php`
+- `web/api/list_scenarios.php`
+
+This lets the demo work as a normal interactive frontend while also showing a
+PHP/MySQL backend path for saving and loading scenarios.
+
 ## Core Model
 
 ### Users
@@ -455,18 +660,3 @@ This project demonstrates basic Lean fluency with:
   `exact`, and `rfl`
 - maintaining a safety invariant across state updates
 - separating executable testing from theorem proving
-
-## Limits
-
-This is a toy formal model. It does not prove real cryptographic security,
-network security, authentication, secrecy under an attacker model, or anything
-about actual encryption algorithms.
-
-The useful claim is narrower:
-
-```text
-Under this simplified model, messages are readable only by the user in their
-encryptedFor field, and correct delivery preserves the inbox safety invariant.
-```
-
-That narrow claim is exactly what the Lean proofs check.
